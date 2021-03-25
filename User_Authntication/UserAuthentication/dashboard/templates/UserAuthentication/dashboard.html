@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Dashboard - User Authentication</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/js/select2.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row mt-3">
+            <div class="col-lg-3"></div>
+            <div class="col-lg-6 text-center">
+                <h1>Dashboard - User Authentication</h1>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-lg-2 text-center">
+                <div id="add-notes">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addNotesModal">Add a
+                        Note</button>
+                    <div class="modal fade" id="addNotesModal" tabindex="-1" role="dialog"
+                        aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Add a User</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="{% url 'dashboard:add_notes_api' %}" method="post" id="addNotes">
+                                        {% csrf_token %}
+                                        <div class="form-group">
+                                            <input type="text" name="title" placeholder="Title" class="form-control"
+                                                required autofocus>
+                                        </div>
+                                        <div class="form-group">
+                                            <textarea placeholder="Write something here..." class="form-control"
+                                                name="UserAuthentication" id="" rows="10" required></textarea>
+                                        </div>
+                                        <button id="addNotesBtn" type="button" class="btn btn-primary"
+                                            data-dismiss="modal" aria-label="Close">Submit</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-lg-2 text-center">
+                <div id="my-notes"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        $('document').ready(function () {
+
+            // API URLs
+            var ADD_NOTES_URL = "{% url 'dashboard:add_notes_api' %}";
+            var MY_NOTES_URL = "{% url 'dashboard:my_notes_api' %}";
+            var EDIT_NOTES_URL = "/api/edit-notes/";
+            var DELETE_NOTES_URL = "/api/delete-notes/";
+            var GET_USERS_API = "{% url 'dashboard:get_users_api' %}";
+            var USERS_ARR = [];
+
+            // Get all Users
+            getUsers();
+
+            // Add a new User
+            $('body').on('click', '#addNotesBtn', function (e) {
+                var form = $("#addNotes");
+                var title = $("[name='title']", form).val();
+                var UserAuthentication = $("[name='UserAuthentication']", form).val();
+                var csrf = $("[name='csrfmiddlewaretoken']", form).val();
+                addNotes(title, UserAuthentication, csrf);
+            });
+
+            // Edit a User
+            $('body').on('click', '.editNotesBtn', function (e) {
+                var id = $(this).attr('id').split('-')[1];
+                var form = $(`#edit-notes-${id}`);
+                var title = $("[name='title']", form).val();
+                var UserAuthentication = $("[name='UserAuthentication']", form).val();
+                var csrf = $("[name='csrfmiddlewaretoken']", form).val();
+                var sharedUsersWrite = $("[name='shared_users_write']", form).val();
+                var sharedUsersRead = $("[name='shared_users_read']", form).val();
+                console.log('sdfdsdsfdf', sharedUsersWrite, sharedUsersRead);
+                editNotes(id, title, UserAuthentication, csrf, sharedUsersWrite, sharedUsersRead);
+            });
+
+            // Delete a User
+            $('body').on('click', '.deleteNotesBtn', function (e) {
+                var id = $(this).attr('id').split('-')[1];
+                deleteNotes(id);
+            });
+
+            // Function that gets all Users
+            function getUsers() {
+                $.ajax({
+                    method: 'GET',
+                    url: GET_USERS_API,
+                })
+                    .done(function (resp) {
+                        USERS_ARR = resp['data']
+                        getMyNotes();
+                    });
+            }
+
+            // Function to add a User
+            function addNotes(title, UserAuthentication, csrf) {
+                $.ajax({
+                    method: 'POST',
+                    url: ADD_NOTES_URL,
+                    data: { title: title, UserAuthentication: UserAuthentication, csrfmiddlewaretoken: csrf },
+                })
+                    .done(function (data) {
+                        getUsers();
+                    });
+            }
+
+            // Function to edit a User
+            function editNotes(id, title, UserAuthentication, csrf, sharedUsersWrite = [], sharedUsersRead = []) {
+                $.ajax({
+                    method: 'POST',
+                    url: `${EDIT_NOTES_URL}${id}/`,
+                    data: { title: title, UserAuthentication: UserAuthentication, csrfmiddlewaretoken: csrf, shared_users_write: sharedUsersWrite, shared_users_read: sharedUsersRead },
+                })
+                    .done(function (data) {
+                        getUsers();
+                    });
+            }
+
+            // Function to delete a User
+            function deleteNotes(id) {
+                $.ajax({
+                    method: 'GET',
+                    url: `${DELETE_NOTES_URL}${id}/`,
+                })
+                    .done(function (data) {
+                        getUsers();
+                    });
+            }
+
+            // Function to get all my Users
+            function getMyNotes() {
+                $.ajax({
+                    method: 'GET',
+                    url: MY_NOTES_URL,
+                    dataType: 'json',
+                })
+                    .done(function (resp) {
+                        var data = resp['data'];
+                        console.log(data);
+                        var titlesArr = ``;
+                        var notesModalArr = ``;
+                        var usersHtml1 = ``;
+                        var usersHtml2 = ``;
+                        for (var j = 0; j < USERS_ARR.length; j++) {
+                            usersHtml1 = usersHtml1 + `<option value="${USERS_ARR[j]['id']}">${USERS_ARR[j]['username']} - ${USERS_ARR[j]['first_name']} ${USERS_ARR[j]['last_name']}</option>`;
+                            usersHtml2 = usersHtml2 + `<option value="${USERS_ARR[j]['id']}">${USERS_ARR[j]['username']} - ${USERS_ARR[j]['first_name']} ${USERS_ARR[j]['last_name']}</option>`;
+                        }
+                        usersHtml1 = `<select name="shared_users_read" class="custom-select mb-3" multiple>${usersHtml1}</select>`;
+                        usersHtml2 = `<select name="shared_users_write" class="custom-select mb-3" multiple>${usersHtml2}</select>`;
+                        for (var i = 0; i < data.length; i++) {
+                            titlesArr = titlesArr + `<button data-toggle="modal" data-target="#modal-${data[i]['id']}" id="${data[i]['id']}" class="dropdown-item my-notes-title" type="button">${data[i]['title']}</button>`;
+                            if (data[i]['shared'] === false) {
+                                notesModalArr = notesModalArr + `
+                                        <div class="modal" id="modal-${data[i]['id']}" tabindex="-1" role="dialog"
+                                    aria-labelledby="exampleModalLabel-${data[i]['id']}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel-${data[i]['id']}">${data[i]['title']}</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form action="{% url 'dashboard:add_notes_api' %}" method="post" id="edit-notes-${data[i]['id']}">
+                                                    {% csrf_token %}
+                                                    <div class="form-group">
+                                                        <input value="${data[i]['title']}" type="text" name="title" placeholder="Title" class="form-control"
+                                                            required autofocus>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <textarea placeholder="Write something here..." class="form-control"
+                                                            name="UserAuthentication" id="" rows="10" required>${data[i]['UserAuthentication']}</textarea>
+                                                    </div>
+                                                    <label>Sharing: Users who can Read</label>
+                                                    ${usersHtml1}
+                                                    <label>Sharing: Users who can Write</label>
+                                                    ${usersHtml2}
+                                                    <button id="editNotesBtn-${data[i]['id']}" type="button" class="btn btn-primary editNotesBtn"
+                                                        data-dismiss="modal" aria-label="Close">Update</button>
+                                                    <button id="deleteNotesBtn-${data[i]['id']}" type="button" class="btn btn-danger deleteNotesBtn"
+                                                    data-dismiss="modal" aria-label="Close">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            } else {
+                                var sharingArr = data[i]['sharing'];
+                                for (var k = 0; k < sharingArr.length; k++) {
+                                    id = sharingArr[i]['user']['id'];
+                                    usersHtml1 = usersHtml1 + `<option selected value="${USERS_ARR[j]['id']}">${USERS_ARR[j]['username']} - ${USERS_ARR[j]['first_name']} ${USERS_ARR[j]['last_name']}</option>`;
+                                    usersHtml2 = usersHtml2 + `<option selected value="${USERS_ARR[j]['id']}">${USERS_ARR[j]['username']} - ${USERS_ARR[j]['first_name']} ${USERS_ARR[j]['last_name']}</option>`;
+
+                                }
+                                usersHtml1 = `<select name="shared_users_read" class="custom-select mb-3" multiple>${usersHtml1}</select>`;
+                                usersHtml2 = `<select name="shared_users_write" class="custom-select mb-3" multiple>${usersHtml2}</select>`;
+                            }
+                        }
+                        var myNotesHtml = `
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                My UserAuthentication
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                                ${titlesArr}
+                            </div>
+                        </div>
+                        ${notesModalArr}
+                    `;
+                        $('#my-notes').html(myNotesHtml);
+
+                        // Hide the Sharing boxes
+                        $('.sharing-boxes').hide();
+
+                        // Toggle the Sharing boxes
+                        $('body').on('click', '.shared', function () {
+                            $(this).parent().next().toggle();
+                        });
+
+                        // Select2
+                        $('.shared_users_read').select2({
+                            placeholder: 'Enter mobiles of users who can read'
+                        });
+                        $('.shared_users_edit').select2({
+                            placeholder: 'Enter mobiles of users who can write'
+                        });
+                    });
+            }
+
+        });
+    </script>
+</body>
+
+<!-- <div class="form-group">
+        <input name="shared_users_edit" class="form-control shared-user" type="text" placeholder="Enter Mobiles Of Who Can Edit">
+    </div>
+    <div class="form-group">
+        <input name="shared_users_read" class="form-control shared-user" type="text" placeholder="Enter Mobiles Of Who Can Read">
+    </div> -->
+
+</html>
